@@ -8,6 +8,7 @@ setup(
     install_requires=[
         "langchain>=0.0.300",
         "langchain-community>=0.0.10",
+        "langchain-openai>=0.0.5",
         "openai>=1.3.0",
         "pandas>=2.0.0",
         "numpy>=1.26.0,<2.1.0",
