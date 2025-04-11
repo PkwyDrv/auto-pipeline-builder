@@ -16,8 +16,8 @@ An intelligent Auto-EDA and preprocessing agent that autonomously analyzes datas
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/auto_pipeline_builder.git
-cd auto_pipeline_builder
+git clone https://github.com/PkwyDrv/auto-pipeline-builder.git
+cd auto-pipeline-builder
 
 # Create and activate virtual environment
 python -m venv venv
