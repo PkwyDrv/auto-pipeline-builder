@@ -1,0 +1,57 @@
+# Default configuration for the Autonomous Data Pipeline Builder
+
+# OpenAI API configuration
+openai:
+  model: "gpt-4"
+  temperature: 0.0
+
+# Data processing settings
+data:
+  max_categorical_unique: 50  # Max unique values for categorical variables
+  missing_threshold: 0.3      # Maximum allowed missing value ratio
+  correlation_threshold: 0.95 # Threshold for high correlation
+
+# EDA settings
+eda:
+  generate_plots: true
+  save_reports: true
+  reports_dir: "reports"
+
+# Preprocessing settings
+preprocessing:
+  feature_selection:
+    enabled: true
+    methods:
+      - "drop_constant"
+      - "drop_duplicate"
+      - "smart_correlation"
+  
+  scaling:
+    numeric:
+      default: "standard_scaler"
+      options:
+        - "standard_scaler"
+        - "minmax_scaler"
+        - "robust_scaler"
+    
+    categorical:
+      default: "onehot_encoder"
+      options:
+        - "onehot_encoder"
+        - "label_encoder"
+        - "ordinal_encoder"
+  
+  imputation:
+    numeric:
+      default: "simple_imputer"
+      strategy: "mean"
+    categorical:
+      default: "simple_imputer"
+      strategy: "most_frequent"
+
+# Logging settings
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  save_to_file: true
+  log_dir: "logs" 
