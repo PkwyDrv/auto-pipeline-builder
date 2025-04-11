@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 import logging
 import json
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
@@ -92,10 +92,10 @@ class EDAAgent:
     def _get_data_summary(self, data: pd.DataFrame) -> Dict[str, Any]:
         """Generate basic dataset summary statistics."""
         return {
-            "shape": data.shape,
-            "memory_usage": data.memory_usage(deep=True).sum(),
-            "duplicates": data.duplicated().sum(),
-            "total_missing": data.isnull().sum().sum()
+            "shape": list(data.shape),
+            "memory_usage": int(data.memory_usage(deep=True).sum()),
+            "duplicates": int(data.duplicated().sum()),
+            "total_missing": int(data.isnull().sum().sum())
         }
     
     def _analyze_columns(self, data: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
@@ -104,29 +104,38 @@ class EDAAgent:
         
         for column in data.columns:
             col_data = data[column]
-            col_type = str(col_data.dtype)
             
-            # Basic stats
+            # Basic stats that work for all types
             stats = {
-                "dtype": col_type,
-                "missing": col_data.isnull().sum(),
-                "missing_pct": (col_data.isnull().sum() / len(col_data)) * 100
+                "dtype": str(col_data.dtype),
+                "missing": int(col_data.isnull().sum()),
+                "missing_pct": float((col_data.isnull().sum() / len(col_data)) * 100)
             }
             
-            # Type-specific analysis
-            if np.issubdtype(col_data.dtype, np.number):
-                stats.update({
-                    "mean": col_data.mean(),
-                    "std": col_data.std(),
-                    "min": col_data.min(),
-                    "max": col_data.max(),
-                    "skew": col_data.skew(),
-                    "kurtosis": col_data.kurtosis()
-                })
+            # Handle different data types
+            if pd.api.types.is_numeric_dtype(col_data) and not pd.api.types.is_categorical_dtype(col_data):
+                numeric_stats = {
+                    "mean": float(col_data.mean()) if not col_data.isnull().all() else None,
+                    "std": float(col_data.std()) if not col_data.isnull().all() else None,
+                    "min": float(col_data.min()) if not col_data.isnull().all() else None,
+                    "max": float(col_data.max()) if not col_data.isnull().all() else None,
+                    "skew": float(col_data.skew()) if not col_data.isnull().all() else None,
+                    "kurtosis": float(col_data.kurtosis()) if not col_data.isnull().all() else None
+                }
+                stats.update(numeric_stats)
+            elif pd.api.types.is_categorical_dtype(col_data):
+                cat_stats = {
+                    "unique_values": int(col_data.nunique()),
+                    "categories": list(col_data.cat.categories),
+                    "ordered": bool(col_data.cat.ordered),
+                    "value_counts": col_data.value_counts().head().to_dict()
+                }
+                stats.update(cat_stats)
             else:
+                # Handle string/object columns
                 stats.update({
-                    "unique_values": col_data.nunique(),
-                    "most_common": col_data.value_counts().head().to_dict()
+                    "unique_values": int(col_data.nunique()),
+                    "most_common": dict(col_data.value_counts().head().to_dict())
                 })
             
             analysis[column] = stats
@@ -135,9 +144,10 @@ class EDAAgent:
     
     def _analyze_correlations(self, data: pd.DataFrame) -> Dict[str, List[Dict[str, float]]]:
         """Analyze correlations between features."""
-        # Numeric correlations
-        numeric_data = data.select_dtypes(include=[np.number])
-        if not numeric_data.empty:
+        # Get only numeric columns, excluding categorical
+        numeric_data = data.select_dtypes(include=['int64', 'float64'])
+        
+        if not numeric_data.empty and len(numeric_data.columns) > 1:
             corr_matrix = numeric_data.corr()
             
             correlations = {}
@@ -149,7 +159,7 @@ class EDAAgent:
                            .drop(column)  # remove self-correlation
                            .to_dict())
                 correlations[column] = [
-                    {"feature": k, "correlation": v}
+                    {"feature": k, "correlation": float(v)}
                     for k, v in top_corr.items()
                 ]
         else:
