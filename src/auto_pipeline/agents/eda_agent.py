@@ -30,12 +30,12 @@ class EDAAgent:
     Uses both traditional statistical methods and LLM-powered insights.
     """
     
-    def __init__(self, model_name: str = "gpt-4", temperature: float = 0.0):
+    def __init__(self, model_name: str = "gpt-3.5", temperature: float = 0.0):
         """
         Initialize the EDA agent.
         
         Args:
-            model_name: Name of the LLM model to use
+            model_name: Name of the LLM model to use (default: gpt-3.5)
             temperature: Temperature for LLM responses
         """
         self.llm = ChatOpenAI(model_name=model_name, temperature=temperature)
