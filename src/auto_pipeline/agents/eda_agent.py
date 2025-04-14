@@ -30,12 +30,12 @@ class EDAAgent:
     Uses both traditional statistical methods and LLM-powered insights.
     """
     
-    def __init__(self, model_name: str = "gemini-pro", temperature: float = 0.0):
+    def __init__(self, model_name: str = "models/gemini-pro", temperature: float = 0.0):
         """
         Initialize the EDA agent.
         
         Args:
-            model_name: Name of the LLM model to use (default: gemini-pro)
+            model_name: Name of the LLM model to use (default: models/gemini-pro)
             temperature: Temperature for LLM responses
         """
         self.llm = ChatGoogleGenerativeAI(
