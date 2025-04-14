@@ -20,7 +20,7 @@ class EDAResults(BaseModel):
     """Pydantic model for structured EDA results."""
     data_summary: Dict[str, Any] = Field(description="Basic dataset information")
     column_analysis: Dict[str, Dict[str, Any]] = Field(description="Per-column analysis")
-    correlations: Dict[str, List[Dict[str, float]]] = Field(description="Feature correlations")
+    correlations: Dict[str, List[Dict[str, Any]]] = Field(description="Feature correlations")
     quality_issues: List[Dict[str, Any]] = Field(description="Data quality issues found")
     recommendations: List[str] = Field(description="Analysis-based recommendations")
 
@@ -157,7 +157,7 @@ class EDAAgent:
         
         return analysis
     
-    def _analyze_correlations(self, data: pd.DataFrame) -> Dict[str, List[Dict[str, float]]]:
+    def _analyze_correlations(self, data: pd.DataFrame) -> Dict[str, List[Dict[str, Any]]]:
         """Analyze correlations between features."""
         # Get only numeric columns, excluding categorical
         numeric_data = data.select_dtypes(include=['int64', 'float64'])
@@ -174,7 +174,7 @@ class EDAAgent:
                            .drop(column)  # remove self-correlation
                            .to_dict())
                 correlations[column] = [
-                    {"feature": k, "correlation": float(v)}
+                    {"feature": str(k), "correlation": float(v)}  # Ensure feature is string and correlation is float
                     for k, v in top_corr.items()
                 ]
         else:
@@ -208,7 +208,7 @@ class EDAAgent:
         self,
         data_summary: Dict[str, Any],
         column_analysis: Dict[str, Dict[str, Any]],
-        correlations: Dict[str, List[Dict[str, float]]]
+        correlations: Dict[str, List[Dict[str, Any]]]
     ) -> EDAResults:
         """Get LLM-powered insights from the analysis results."""
         try:
