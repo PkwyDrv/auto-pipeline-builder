@@ -191,8 +191,8 @@ class PreprocessingAgent:
                         # Set default parameters for encoders if not specified
                         if not hasattr(trans, 'categories') or trans.categories is None:
                             trans.set_params(categories='auto')
-                        if isinstance(trans, OneHotEncoder) and not hasattr(trans, 'sparse'):
-                            trans.set_params(sparse=False)
+                        if isinstance(trans, OneHotEncoder) and not hasattr(trans, 'sparse_output'):
+                            trans.set_params(sparse_output=False)
                     categorical_pipeline_steps.append((name, trans))
                 
                 categorical_pipeline = Pipeline(categorical_pipeline_steps)
@@ -289,7 +289,7 @@ class PreprocessingAgent:
                     params = step.params.copy()
                     params['categories'] = 'auto'  # Always use auto for categories
                     if step.transformer == 'onehot_encoder':
-                        params['sparse'] = False  # Use dense matrix output
+                        params['sparse_output'] = False  # Use dense matrix output
                     step.params = params
                 
                 validated_steps.append(step)
