@@ -211,31 +211,80 @@ class EDAAgent:
         correlations: Dict[str, List[Dict[str, float]]]
     ) -> EDAResults:
         """Get LLM-powered insights from the analysis results."""
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert data scientist analyzing a dataset.
-            Based on the provided analysis results, identify key insights,
-            data quality issues, and make recommendations for preprocessing
-            and modeling."""),
-            ("user", """
+        try:
+            # Break down the analysis into smaller chunks
+            template = """You are a data analysis expert. Analyze the following dataset information and provide insights.
+            Focus on {focus_area}. Keep your response concise and factual.
+            
             Data Summary: {data_summary}
             Column Analysis: {column_analysis}
             Correlations: {correlations}
             
-            Please provide structured insights following this format:
+            Provide your analysis in the following JSON format:
             {format_instructions}
-            """)
-        ])
-        
-        # Prepare the message
-        message = prompt.format_messages(
-            data_summary=json.dumps(data_summary, indent=2),
-            column_analysis=json.dumps(column_analysis, indent=2),
-            correlations=json.dumps(correlations, indent=2),
-            format_instructions=self.output_parser.get_format_instructions()
-        )
-        
-        # Get LLM response
-        response = self.llm.invoke(message)
-        
-        # Parse the response
-        return self.output_parser.parse(response.content) 
+            """
+            
+            prompt = ChatPromptTemplate.from_template(template)
+            
+            # First pass: Analyze data quality
+            quality_chain = prompt | self.llm
+            quality_response = quality_chain.invoke({
+                "focus_area": "data quality issues and potential problems",
+                "data_summary": json.dumps(data_summary),
+                "column_analysis": json.dumps(column_analysis),
+                "correlations": json.dumps(correlations),
+                "format_instructions": '''
+                {
+                    "quality_issues": [
+                        {"issue": "description of issue", "severity": "high/medium/low", "affected_columns": ["col1", "col2"]}
+                    ],
+                    "recommendations": []
+                }'''
+            })
+            
+            # Second pass: Generate recommendations
+            recommendations_chain = prompt | self.llm
+            recommendations_response = recommendations_chain.invoke({
+                "focus_area": "actionable recommendations for data preprocessing and modeling",
+                "data_summary": json.dumps(data_summary),
+                "column_analysis": json.dumps(column_analysis),
+                "correlations": json.dumps(correlations),
+                "format_instructions": '''
+                {
+                    "quality_issues": [],
+                    "recommendations": ["recommendation1", "recommendation2"]
+                }'''
+            })
+            
+            # Parse responses
+            try:
+                quality_data = json.loads(quality_response.content)
+                recommendations_data = json.loads(recommendations_response.content)
+                
+                return EDAResults(
+                    data_summary=data_summary,
+                    column_analysis=column_analysis,
+                    correlations=correlations,
+                    quality_issues=quality_data.get("quality_issues", []),
+                    recommendations=recommendations_data.get("recommendations", [])
+                )
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse LLM response, returning basic results")
+                return EDAResults(
+                    data_summary=data_summary,
+                    column_analysis=column_analysis,
+                    correlations=correlations,
+                    quality_issues=[{"issue": "LLM analysis failed", "severity": "low", "affected_columns": []}],
+                    recommendations=["Consider manual review of the data"]
+                )
+                
+        except Exception as e:
+            logger.error(f"Error getting LLM insights: {str(e)}")
+            # Return basic results without LLM insights
+            return EDAResults(
+                data_summary=data_summary,
+                column_analysis=column_analysis,
+                correlations=correlations,
+                quality_issues=[],
+                recommendations=[]
+            ) 
