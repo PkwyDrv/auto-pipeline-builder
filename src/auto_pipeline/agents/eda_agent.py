@@ -31,22 +31,23 @@ class EDAAgent:
     """
     
     AVAILABLE_MODELS = {
+        "gemini-2.0-flash": "gemini-2.0-flash",  # Free tier model
         "gemini-pro": "gemini-pro",
         "gemini-pro-vision": "gemini-pro-vision",
         "gemini-ultra": "gemini-ultra"  # Limited access
     }
     
-    def __init__(self, model_name: str = "gemini-pro", temperature: float = 0.0):
+    def __init__(self, model_name: str = "gemini-2.0-flash", temperature: float = 0.0):
         """
         Initialize the EDA agent.
         
         Args:
-            model_name: Name of the LLM model to use (default: gemini-pro)
+            model_name: Name of the LLM model to use (default: gemini-2.0-flash)
             temperature: Temperature for LLM responses
         """
         if model_name not in self.AVAILABLE_MODELS:
-            logger.warning(f"Model {model_name} not found. Defaulting to gemini-pro")
-            model_name = "gemini-pro"
+            logger.warning(f"Model {model_name} not found. Defaulting to gemini-2.0-flash")
+            model_name = "gemini-2.0-flash"
             
         self.llm = ChatGoogleGenerativeAI(
             model=model_name,
