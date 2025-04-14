@@ -184,9 +184,18 @@ class PreprocessingAgent:
                 transformers.append(("numeric", numeric_pipeline, numeric_columns))
             
             if categorical_transformers:
-                categorical_pipeline = Pipeline([
-                    (name, trans) for name, trans, _ in categorical_transformers
-                ])
+                # Configure categorical transformers with proper parameters
+                categorical_pipeline_steps = []
+                for name, trans, _ in categorical_transformers:
+                    if isinstance(trans, (OneHotEncoder, OrdinalEncoder)):
+                        # Set default parameters for encoders if not specified
+                        if not hasattr(trans, 'categories') or trans.categories is None:
+                            trans.set_params(categories='auto')
+                        if isinstance(trans, OneHotEncoder) and not hasattr(trans, 'sparse'):
+                            trans.set_params(sparse=False)
+                    categorical_pipeline_steps.append((name, trans))
+                
+                categorical_pipeline = Pipeline(categorical_pipeline_steps)
                 categorical_columns = categorical_transformers[0][2]
                 transformers.append(("categorical", categorical_pipeline, categorical_columns))
             
@@ -258,41 +267,35 @@ class PreprocessingAgent:
         response = self.llm.invoke(message)
         return self.output_parser.parse(response.content)
     
-    def _validate_steps(
-        self,
-        steps: List[PreprocessingStep],
-        data: pd.DataFrame
-    ) -> List[PreprocessingStep]:
-        """Validate and adjust preprocessing steps if needed."""
+    def _validate_steps(self, steps: List[PreprocessingStep], data: pd.DataFrame) -> List[PreprocessingStep]:
+        """Validate and adjust preprocessing steps."""
         validated_steps = []
         
         for step in steps:
-            # Validate transformer exists
-            if step.transformer not in self.transformers:
-                logger.warning(f"Unknown transformer: {step.transformer}, skipping")
-                continue
-            
-            # Validate columns exist
-            valid_columns = [col for col in step.columns if col in data.columns]
-            if len(valid_columns) != len(step.columns):
-                logger.warning(
-                    f"Some columns not found for {step.name}, "
-                    f"using only: {valid_columns}"
-                )
-                step.columns = valid_columns
-            
-            # Validate parameters
-            transformer_class = self.transformers[step.transformer]
             try:
-                # Try initializing the transformer
-                transformer_class(**step.params)
+                # Verify transformer exists
+                if step.transformer not in self.transformers:
+                    logger.warning(f"Unknown transformer {step.transformer}, skipping")
+                    continue
+                
+                # Verify columns exist
+                missing_cols = [col for col in step.columns if col not in data.columns]
+                if missing_cols:
+                    logger.warning(f"Columns {missing_cols} not found in data, skipping")
+                    continue
+                
+                # Adjust parameters for encoders
+                if step.transformer in ['onehot_encoder', 'ordinal_encoder']:
+                    params = step.params.copy()
+                    params['categories'] = 'auto'  # Always use auto for categories
+                    if step.transformer == 'onehot_encoder':
+                        params['sparse'] = False  # Use dense matrix output
+                    step.params = params
+                
                 validated_steps.append(step)
+                
             except Exception as e:
-                logger.warning(
-                    f"Invalid parameters for {step.name}: {str(e)}, "
-                    "using default parameters"
-                )
-                step.params = {}
-                validated_steps.append(step)
+                logger.warning(f"Error validating step {step.name}: {str(e)}")
+                continue
         
         return validated_steps 
