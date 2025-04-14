@@ -41,14 +41,24 @@ class PreprocessingAgent:
     Uses LLM for intelligent preprocessing decisions.
     """
     
-    def __init__(self, model_name: str = "models/gemini-pro", temperature: float = 0.0):
+    AVAILABLE_MODELS = {
+        "gemini-pro": "gemini-pro",
+        "gemini-pro-vision": "gemini-pro-vision",
+        "gemini-ultra": "gemini-ultra"  # Limited access
+    }
+    
+    def __init__(self, model_name: str = "gemini-pro", temperature: float = 0.0):
         """
         Initialize the preprocessing agent.
         
         Args:
-            model_name: Name of the LLM model to use (default: models/gemini-pro)
+            model_name: Name of the LLM model to use (default: gemini-pro)
             temperature: Temperature for LLM responses
         """
+        if model_name not in self.AVAILABLE_MODELS:
+            logger.warning(f"Model {model_name} not found. Defaulting to gemini-pro")
+            model_name = "gemini-pro"
+            
         self.llm = ChatGoogleGenerativeAI(
             model=model_name,
             temperature=temperature,
